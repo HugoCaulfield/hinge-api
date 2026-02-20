@@ -13,7 +13,7 @@ console.log("🎭 Starting Photo Pre-Generation Worker...");
 console.log("======================================");
 
 // Start the background worker
-const workerPath = path.join(__dirname, "src", "core", "photo", "background-photo-worker.js");
+const workerPath = path.join(__dirname, "src", "core", "photo", "photo-pool-worker.js");
 
 const worker = spawn("node", [workerPath], {
   stdio: "inherit", // Forward all output to parent process

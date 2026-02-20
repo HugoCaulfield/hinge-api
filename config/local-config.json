@@ -7,6 +7,7 @@
   "photos": {
     "useSpoofing": true,
     "spoofer": "random_three",
+    "metadataSpoofer": "iphone_exif_gui_reconstructed",
     "count": 6
   },
   "sms": {

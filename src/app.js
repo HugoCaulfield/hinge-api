@@ -11,7 +11,7 @@ const { createSmsService } = require("./services/sms-service");
 const { createEmailService } = require("./services/email-service");
 const { createPhotoService } = require("./services/photo-service");
 const { createAccountService } = require("./services/account-service");
-const { createJobRunner } = require("./jobs/create-job-runner");
+const { createJobRunner } = require("./jobs/job-runner");
 const { createAuthMiddleware } = require("./middleware/auth");
 const { errorHandler } = require("./middleware/error-handler");
 const { createRouter } = require("./routes/create-router");
@@ -21,7 +21,6 @@ function boot() {
 
   process.env.SELECTED_APP = config.appName || "hinge-prod-1";
   process.env.PHOTOS_USE_SPOOFING = config.photos.useSpoofing ? "true" : "false";
-  process.env.PHOTO_SPOOFER = config.photos.spoofer || "random_three";
 
   const jobsStore = createJobsStore(config.jobs.ttlMs);
   const sessionsStore = createSessionsStore(config.sessions.ttlMs);

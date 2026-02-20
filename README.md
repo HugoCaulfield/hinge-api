@@ -109,3 +109,9 @@ npm run start:photo-worker
 - Worker cannot generate photos: verify model source photos exist in:
   - `/Users/hugocaulfield/Docs/ofm_tinder/hinge-api/scripts/python/<model>/`
 - `exiftool not found`: install `exiftool` or switch spoofer to `random_three`.
+
+
+## Photo spoofing behavior
+
+- `photos.useSpoofing=true`: uses pool photos generated with full spoofing pipeline.
+- `photos.useSpoofing=false`: still spoofs metadata (iPhone/GPS/date) with `iphone_exif_gui_reconstructed` at `modification-level=0`, so pixels are not intentionally altered.

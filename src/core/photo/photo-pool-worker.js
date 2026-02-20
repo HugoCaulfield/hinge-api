@@ -12,12 +12,12 @@ const fsSync = require("fs");
 const path = require("path");
 const { spawn } = require("child_process");
 const os = require("os");
-const { APP_CONFIGS } = require("../../../config/app-config");
+const { loadConfig } = require("../../config/load-config");
 const {
   DEFAULT_SPOOFER,
   getSpooferRuntimeConfig,
   listAvailableSpoofers,
-} = require("./spoofer-registry");
+} = require("./photo-spoofer-registry");
 const {
   DEFAULT_MODEL_KEY,
   getPoolDir,
@@ -353,9 +353,16 @@ async function acquirePoolLock(poolDir) {
   }
 }
 
-function getAppSpooferSettings(appName) {
-  const appConfig = APP_CONFIGS[appName] || {};
-  const photosConfig = appConfig.photos || {};
+function getAppSpooferSettings() {
+  let photosConfig = {};
+  try {
+    const config = loadConfig();
+    photosConfig = config?.photos || {};
+  } catch (error) {
+    log(
+      `⚠️ Could not load spoofer settings from local-config.json, using defaults: ${error.message}`
+    );
+  }
   return {
     name: photosConfig.spoofer || DEFAULT_SPOOFER,
     options: photosConfig.spooferOptions || {},
@@ -841,7 +848,7 @@ async function generateBatchForApp(appOrStatus, requestedSets, options = {}) {
   }
 
   try {
-    const spooferSettings = getAppSpooferSettings(appName);
+    const spooferSettings = getAppSpooferSettings();
     const modelWorkingDir = path.dirname(modelSourceDir);
     await fs.mkdir(modelSourceDir, { recursive: true });
     const runtimeConfig = getSpooferRuntimeConfig(spooferSettings.name, {

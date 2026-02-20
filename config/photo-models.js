@@ -10,22 +10,6 @@ const MODEL_POOLS_DIR = path.join(POOLS_DIR, "models");
 const DEFAULT_MODEL_KEY = "chloe";
 
 const MODEL_DEFINITIONS = {
-  // random_insta: {
-  //   key: "random_insta",
-  //   name: "Random Insta",
-  //   sourceDir: path.join(PYTHON_DIR, "random_insta"),
-  //   legacySources: [path.join(MODELS_DIR, "random_insta"), LEGACY_INPUT_DIR],
-  // },
-  // anna: {
-  //   key: "anna",
-  //   name: "Anna",
-  //   age: 20,
-  //   sourceDir: path.join(PYTHON_DIR, "anna"),
-  //   legacySources: [
-  //     path.join(MODELS_DIR, "anna"),
-  //     LEGACY_INPUT_DIR,
-  //   ],
-  // },
   chloe: {
     key: "chloe",
     name: "Chloe",

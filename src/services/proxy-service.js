@@ -1,6 +1,6 @@
 const {
   generateProxyWithFallback,
-} = require("../core/proxy/manager");
+} = require("../core/proxy/proxy-fallback-service");
 
 function createProxyService(config) {
   async function generate(location) {

@@ -1,0 +1,385 @@
+{
+  "info": {
+    "_postman_id": "7bb83a0e-7eb9-4f60-9df0-b57a36e8d315",
+    "name": "Hinge API Local",
+    "description": "Collection ready-to-import for local testing of the Hinge API.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "apikey",
+    "apikey": [
+      {
+        "key": "key",
+        "value": "x-api-key",
+        "type": "string"
+      },
+      {
+        "key": "value",
+        "value": "{{apiKey}}",
+        "type": "string"
+      },
+      {
+        "key": "in",
+        "value": "header",
+        "type": "string"
+      }
+    ]
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://127.0.0.1:3000" },
+    { "key": "apiKey", "value": "change-me" },
+    { "key": "webhookToken", "value": "" },
+    { "key": "state", "value": "New York" },
+    { "key": "city", "value": "New York" },
+    { "key": "areaCode", "value": "212" },
+    { "key": "jobId", "value": "" },
+    { "key": "sessionId", "value": "" },
+    { "key": "smsRequestId", "value": "" },
+    { "key": "emailOrderId", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "0. Public",
+      "item": [
+        {
+          "name": "Health",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/health",
+              "host": ["{{baseUrl}}"],
+              "path": ["health"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Webhook DaisySMS (simulate code)",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json", "type": "text" },
+              { "key": "x-webhook-token", "value": "{{webhookToken}}", "type": "text" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"activationId\": \"{{smsRequestId}}\",\n  \"code\": \"123456\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/v1/webhooks/daisysms",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "webhooks", "daisysms"]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "1. Jobs",
+      "item": [
+        {
+          "name": "Generate Account",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let json = {};",
+                  "try { json = pm.response.json(); } catch (e) {}",
+                  "if (json?.data?.jobId) {",
+                  "  pm.environment.set('jobId', json.data.jobId);",
+                  "  pm.environment.unset('sessionId');",
+                  "  pm.environment.unset('smsRequestId');",
+                  "  pm.environment.unset('emailOrderId');",
+                  "}",
+                  "pm.test('Status is 202', function () { pm.response.to.have.status(202); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json", "type": "text" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"state\": \"{{state}}\",\n  \"city\": \"{{city}}\",\n  \"modelKey\": \"chloe\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/v1/accounts/generate",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "accounts", "generate"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Job by jobId",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let json = {};",
+                  "try { json = pm.response.json(); } catch (e) {}",
+                  "const result = json?.data?.result;",
+                  "if (result?.sessionId) pm.environment.set('sessionId', result.sessionId);",
+                  "if (result?.phone?.requestId) pm.environment.set('smsRequestId', result.phone.requestId);",
+                  "if (result?.email?.orderId) pm.environment.set('emailOrderId', result.email.orderId);",
+                  "pm.test('Status is 200', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/v1/jobs/{{jobId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "jobs", "{{jobId}}"]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "2. Regenerate",
+      "item": [
+        {
+          "name": "Regenerate Proxy",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let json = {};",
+                  "try { json = pm.response.json(); } catch (e) {}",
+                  "if (json?.data?.jobId) pm.environment.set('jobId', json.data.jobId);",
+                  "pm.test('Status is 202', function () { pm.response.to.have.status(202); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json", "type": "text" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"state\": \"{{state}}\",\n  \"city\": \"{{city}}\",\n  \"sessionId\": \"{{sessionId}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/v1/proxies/regenerate",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "proxies", "regenerate"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Regenerate Phone",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let json = {};",
+                  "try { json = pm.response.json(); } catch (e) {}",
+                  "if (json?.data?.jobId) pm.environment.set('jobId', json.data.jobId);",
+                  "pm.test('Status is 202', function () { pm.response.to.have.status(202); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json", "type": "text" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"areaCode\": \"{{areaCode}}\",\n  \"sessionId\": \"{{sessionId}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/v1/phones/regenerate",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "phones", "regenerate"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Regenerate Email",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let json = {};",
+                  "try { json = pm.response.json(); } catch (e) {}",
+                  "if (json?.data?.jobId) pm.environment.set('jobId', json.data.jobId);",
+                  "pm.test('Status is 202', function () { pm.response.to.have.status(202); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json", "type": "text" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"sessionId\": \"{{sessionId}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/v1/emails/regenerate",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "emails", "regenerate"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Regenerate Photos",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let json = {};",
+                  "try { json = pm.response.json(); } catch (e) {}",
+                  "if (json?.data?.jobId) pm.environment.set('jobId', json.data.jobId);",
+                  "pm.test('Status is 202', function () { pm.response.to.have.status(202); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json", "type": "text" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"sessionId\": \"{{sessionId}}\",\n  \"modelKey\": \"chloe\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/v1/photos/regenerate",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "photos", "regenerate"]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "3. SMS",
+      "item": [
+        {
+          "name": "SMS Status",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/v1/sms/{{smsRequestId}}/status",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "sms", "{{smsRequestId}}", "status"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "SMS Code",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/v1/sms/{{smsRequestId}}/code",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "sms", "{{smsRequestId}}", "code"]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "4. Email",
+      "item": [
+        {
+          "name": "Email Status",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/v1/emails/{{emailOrderId}}/status",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "emails", "{{emailOrderId}}", "status"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Email Code",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/v1/emails/{{emailOrderId}}/code",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "emails", "{{emailOrderId}}", "code"]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "5. Sessions & Photos",
+      "item": [
+        {
+          "name": "Cancel Session",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/v1/sessions/{{sessionId}}/cancel",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "sessions", "{{sessionId}}", "cancel"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Photo Pools Stats",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/v1/photos/pools/stats",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "photos", "pools", "stats"]
+            }
+          },
+          "response": []
+        }
+      ]
+    }
+  ]
+}
