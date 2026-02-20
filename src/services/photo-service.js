@@ -1,11 +1,11 @@
 const {
   generateRandomPhotos,
   getPoolStats,
-} = require("../../current_telegram_bot/src/core/photo/pool-photo-manager");
+} = require("../core/photo/pool-photo-manager");
 const {
   listModelKeys,
   DEFAULT_MODEL_KEY,
-} = require("../../current_telegram_bot/config/photo-models");
+} = require("../../config/photo-models");
 
 function createPhotoService(config) {
   function applyRuntimeEnv() {

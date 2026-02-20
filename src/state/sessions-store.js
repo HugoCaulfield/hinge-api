@@ -24,7 +24,6 @@ function createSessionsStore(ttlMs = 86400000) {
       email: null,
       photos: null,
       birth: null,
-      airtableContext: null,
       ...initial,
     };
     sessions.set(sessionId, session);

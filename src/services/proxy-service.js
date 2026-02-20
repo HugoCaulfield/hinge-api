@@ -1,6 +1,6 @@
 const {
   generateProxyWithFallback,
-} = require("../../current_telegram_bot/src/core/proxy/manager");
+} = require("../core/proxy/manager");
 
 function createProxyService(config) {
   async function generate(location) {

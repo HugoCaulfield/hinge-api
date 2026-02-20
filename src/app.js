@@ -10,7 +10,6 @@ const { createProxyService } = require("./services/proxy-service");
 const { createSmsService } = require("./services/sms-service");
 const { createEmailService } = require("./services/email-service");
 const { createPhotoService } = require("./services/photo-service");
-const { createAirtableService } = require("./services/airtable-service");
 const { createAccountService } = require("./services/account-service");
 const { createJobRunner } = require("./jobs/create-job-runner");
 const { createAuthMiddleware } = require("./middleware/auth");
@@ -34,7 +33,6 @@ function boot() {
   const smsService = createSmsService(config, smsStore, sessionsStore);
   const emailService = createEmailService(config, emailStore, sessionsStore);
   const photoService = createPhotoService(config);
-  const airtableService = createAirtableService(config);
 
   const accountService = createAccountService({
     sessionsStore,
@@ -43,7 +41,6 @@ function boot() {
     smsService,
     emailService,
     photoService,
-    airtableService,
   });
 
   const handlers = {
@@ -101,7 +98,6 @@ function boot() {
     smsService,
     emailService,
     photoService,
-    airtableService,
   });
 
   app.use(router);

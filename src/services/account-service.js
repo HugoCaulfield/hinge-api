@@ -1,8 +1,8 @@
-const { generateBirthDate } = require("../../current_telegram_bot/src/core/photo/date_generator");
+const { generateBirthDate } = require("../core/photo/date_generator");
 const {
   getModelDisplayName,
   getModelAge,
-} = require("../../current_telegram_bot/config/photo-models");
+} = require("../../config/photo-models");
 
 function createAccountService({
   sessionsStore,
@@ -11,7 +11,6 @@ function createAccountService({
   smsService,
   emailService,
   photoService,
-  airtableService,
 }) {
   async function generateAccount(input) {
     const session = sessionsStore.create();
@@ -45,40 +44,6 @@ function createAccountService({
     const modelAge = getModelAge(modelKey);
     const birthInfo = generateBirthDate({ modelKey, age: modelAge });
 
-    const context = {
-      latitude: locationWithCoords.latitude,
-      longitude: locationWithCoords.longitude,
-      proxy: `${proxyResult.domain}:${proxyResult.port}:${proxyResult.username}:${proxyResult.password}`,
-      proxy_ip: proxyResult.ip,
-      phoneNumber: smsResult.phoneNumber,
-      city: locationWithCoords.city,
-      state: locationWithCoords.state,
-      provider: proxyResult.providerKey || proxyResult.provider,
-      smsProvider: smsResult.provider,
-      email: emailResult.email,
-      emailAddress: emailResult.email,
-      originalPhotoNames: (photos.originalNames || []).join(", "),
-      modelKey,
-      modelName,
-      modelAge: typeof modelAge === "number" ? modelAge : "",
-      birthDate: birthInfo.birthDate,
-      zodiacSign: birthInfo.zodiacSign,
-      asn: proxyResult.asn || "",
-      asnOrg: proxyResult.asnOrg || "",
-      scamalyticsScore: proxyResult.scamalyticsScore || "",
-      scamalyticsRisk: proxyResult.scamalyticsRisk || "",
-      scamalyticsIspScore: proxyResult.scamalyticsIspScore || "",
-      ipLocationAccuracyKm: proxyResult.ipLocationAccuracyKm || "",
-      ipGeolocation: proxyResult.ipGeolocation || "",
-      dbipIpCity: proxyResult.dbipIpCity || "",
-      dbipIpGeolocation: proxyResult.dbipIpGeolocation || "",
-      dbipIspName: proxyResult.dbipIspName || "",
-      dbipConnectionType: proxyResult.dbipConnectionType || "",
-      ip2proxyProxyType: proxyResult.ip2proxyProxyType || "",
-    };
-
-    const airtableLinks = airtableService.buildLinks(context);
-
     sessionsStore.linkSmsRequest(sessionId, smsResult.requestId);
     sessionsStore.linkEmailOrder(sessionId, emailResult.orderId);
 
@@ -104,7 +69,6 @@ function createAccountService({
       },
       photos,
       birth: birthInfo,
-      airtableContext: context,
     });
 
     return {
@@ -120,7 +84,6 @@ function createAccountService({
         modelName,
         modelAge,
       },
-      airtableLinks,
     };
   }
 

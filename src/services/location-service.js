@@ -1,9 +1,9 @@
 const {
   findAndValidateLocation,
-} = require("../../current_telegram_bot/src/core/location/location-utils");
+} = require("../core/location/location-utils");
 const {
   getRandomLocationInCity,
-} = require("../../current_telegram_bot/src/core/location/locations");
+} = require("../core/location/locations");
 
 function createLocationService() {
   async function validateAndResolve(state, city) {

@@ -26,9 +26,6 @@
     "pollIntervalMs": 7000,
     "timeoutMs": 420000
   },
-  "airtable": {
-    "enabled": true
-  },
   "security": {
     "apiKey": "change-me",
     "allowNoAuth": false

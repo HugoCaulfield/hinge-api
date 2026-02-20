@@ -12,7 +12,6 @@ function createRouter({
   smsService,
   emailService,
   photoService,
-  airtableService,
 }) {
   const router = express.Router();
 
@@ -67,11 +66,6 @@ function createRouter({
   const regenPhotosSchema = z.object({
     sessionId: z.string().min(1),
     modelKey: z.string().optional(),
-  });
-
-  const airtableSchema = z.object({
-    context: z.record(z.any()),
-    status: z.string().optional(),
   });
 
   router.get("/health", (req, res) => {
@@ -276,16 +270,6 @@ function createRouter({
         sessionId: session.sessionId,
         status: "cancelled",
       }));
-    } catch (error) {
-      return next(error);
-    }
-  });
-
-  router.post("/v1/airtable/links", (req, res, next) => {
-    try {
-      const input = parse(airtableSchema, req.body);
-      const links = airtableService.buildLinks(input.context, input.status);
-      return res.json(withMeta({ links }));
     } catch (error) {
       return next(error);
     }
