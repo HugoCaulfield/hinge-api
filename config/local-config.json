@@ -1,0 +1,46 @@
+{
+  "appName": "hinge-prod-1",
+  "proxy": {
+    "providers": ["anyIp"],
+    "useScamalytics": true
+  },
+  "photos": {
+    "useSpoofing": true,
+    "spoofer": "random_three",
+    "count": 6
+  },
+  "sms": {
+    "provider": "daisysms",
+    "serviceCode": "vz",
+    "apiKey": "",
+    "baseUrl": "https://daisysms.com/stubs/handler_api.php",
+    "pollIntervalMs": 10000,
+    "timeoutMs": 420000
+  },
+  "email": {
+    "provider": "anymessage",
+    "token": "",
+    "baseUrl": "https://api.anymessage.shop",
+    "site": "hinge.co",
+    "domains": ["gmail.com", "outlook.com"],
+    "pollIntervalMs": 7000,
+    "timeoutMs": 420000
+  },
+  "airtable": {
+    "enabled": true
+  },
+  "security": {
+    "apiKey": "change-me",
+    "allowNoAuth": false
+  },
+  "webhooks": {
+    "daisysmsToken": ""
+  },
+  "jobs": {
+    "concurrency": 1,
+    "ttlMs": 86400000
+  },
+  "sessions": {
+    "ttlMs": 86400000
+  }
+}

@@ -1,0 +1,6 @@
+current_telegram_bot
+node_modules
+dist
+.env
+.DS_Store
+*.log
