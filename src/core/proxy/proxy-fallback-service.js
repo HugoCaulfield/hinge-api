@@ -49,7 +49,25 @@ async function generateProxyWithFallback(location, appConfig = null) {
         }
       }
 
-      errors.push(`${provider}: failed after ${MAX_RETRIES} attempts`);
+      if (provider === "marsproxies") {
+        const city = location?.city || "unknown city";
+        const state = location?.state || "";
+        const place = state ? `${city}, ${state}` : city;
+        const cityError = `City not found on Mars Proxies after ${MAX_RETRIES} attempts: ${place}`;
+
+        if (providers.length === 1) {
+          return {
+            success: false,
+            code: "CITY_NOT_FOUND",
+            error: cityError,
+            provider: PROXY_PROVIDERS[provider] || provider,
+          };
+        }
+
+        errors.push(`${provider}: ${cityError}`);
+      } else {
+        errors.push(`${provider}: failed after ${MAX_RETRIES} attempts`);
+      }
     } catch (error) {
       errors.push(`${provider}: ${error.message}`);
     }

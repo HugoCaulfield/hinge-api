@@ -14,7 +14,7 @@ function createProxyService(config) {
     const result = await generateProxyWithFallback(location, appConfig);
     if (!result.success) {
       const err = new Error(result.error || "Failed to generate proxy");
-      err.code = "PROXY_GENERATION_FAILED";
+      err.code = result.code || "PROXY_GENERATION_FAILED";
       throw err;
     }
 

@@ -676,10 +676,9 @@ async function generateProxyInfo(
       state_or_city,
       proxySettings
     );
-    const maskedPassword = String(proxyConfig.password || "")
-      .replace(/^(.{18}).+(.{14})$/, "$1...$2");
+    const fullCandidate = `${proxyConfig.domain}:${proxyConfig.port}:${proxyConfig.username}:${proxyConfig.password}`;
     log(
-      `🧩 Proxy candidate: ${proxyConfig.domain}:${proxyConfig.port}:${proxyConfig.username}:${maskedPassword}`
+      `🧩 Proxy candidate (full): ${fullCandidate}`
     );
     logWithTime("✅ Configuration proxy générée", configStartTime);
 
@@ -798,13 +797,18 @@ async function generateProxyConfig(
   switch (provider) {
     case "marsproxies":
       const mars = getMarsSettings();
-      const scope = mars.locationTag === "city" ? "city" : "state";
+      // Force city targeting for Mars proxies to avoid state-only credentials.
+      const scope = "city";
       const country = String(
         location.CountryCode || location.countryCode || "us"
       ).toLowerCase();
-      const locationValue =
-        mars.locationSource === "state" ? location.state || "" : location.city || "";
+      const locationValue = location.city || "";
       const locationKey = normalizeToken(locationValue, mars.locationFormat);
+      if (!locationKey) {
+        throw new Error(
+          `Mars proxy requires a city token but city is missing (state=${location.state || "?"})`
+        );
+      }
 
       password =
         mars.password ||
@@ -822,6 +826,11 @@ async function generateProxyConfig(
               ultraset: mars.ultraset,
             })
           : `${mars.passwordPrefix}_country-${country}_${scope}-${locationKey}_fast-${mars.fast}_stable-${mars.stable}_session-${random_sid}_lifetime-${mars.lifetime}_ultraset-${mars.ultraset}`);
+      if (!/_city-[^_]+/i.test(password)) {
+        throw new Error(
+          `Mars proxy password must include a city token (_city-...). Generated value: ${password}`
+        );
+      }
 
       return {
         domain: mars.domain,
