@@ -6,7 +6,8 @@ function createProxyService(config) {
   async function generate(location) {
     const appConfig = {
       proxy: {
-        providers: config.proxy.providers,
+        ...(config.proxy || {}),
+        providers: config?.proxy?.providers,
       },
     };
 

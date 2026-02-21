@@ -1,8 +1,22 @@
 {
   "appName": "hinge-prod-1",
   "proxy": {
-    "providers": ["anyIp"],
-    "useScamalytics": true
+    "providers": ["marsproxies"],
+    "useScamalytics": true,
+    "marsproxies": {
+      "protocol": "socks5",
+      "domain": "91.239.130.17",
+      "port": "44445",
+      "username": "mr88909jCof",
+      "passwordPrefix": "Mkt28Uzxh5",
+      "locationTag": "state",
+      "locationSource": "city",
+      "locationFormat": "compact",
+      "fast": "1",
+      "stable": "1",
+      "lifetime": "168h",
+      "ultraset": "1"
+    }
   },
   "photos": {
     "useSpoofing": false,

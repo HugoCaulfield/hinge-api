@@ -662,7 +662,8 @@ async function verifyProxy(proxyConfig, city, state) {
 async function generateProxyInfo(
   location,
   provider = "marsproxies",
-  state_or_city = "state"
+  state_or_city = "state",
+  proxySettings = {}
 ) {
   const startTime = Date.now();
   log(`🚀 Début génération proxy pour ${location.city}, ${location.state}`);
@@ -672,7 +673,13 @@ async function generateProxyInfo(
     let proxyConfig = await generateProxyConfig(
       location,
       provider,
-      state_or_city
+      state_or_city,
+      proxySettings
+    );
+    const maskedPassword = String(proxyConfig.password || "")
+      .replace(/^(.{18}).+(.{14})$/, "$1...$2");
+    log(
+      `🧩 Proxy candidate: ${proxyConfig.domain}:${proxyConfig.port}:${proxyConfig.username}:${maskedPassword}`
     );
     logWithTime("✅ Configuration proxy générée", configStartTime);
 
@@ -718,7 +725,12 @@ async function generateProxyInfo(
 }
 
 // Helper function to generate proxy configuration (inchangée mais avec async/await pour cohérence)
-async function generateProxyConfig(location, provider, state_or_city) {
+async function generateProxyConfig(
+  location,
+  provider,
+  state_or_city,
+  proxySettings = {}
+) {
   let random_sid = Math.random()
     .toString(36)
     .substring(2, 10)
@@ -728,19 +740,95 @@ async function generateProxyConfig(location, provider, state_or_city) {
   let random_number = Math.floor(Math.random() * 101) + 10000;
   let random_number_2 = Math.floor(Math.random() * 101) + 1;
 
+  const normalizeToken = (value = "", mode = "underscore") => {
+    const base = String(value || "").trim().toLowerCase();
+    if (!base) return "";
+    if (mode === "compact") {
+      return base.replace(/\s+/g, "");
+    }
+    return base.replace(/\s+/g, "_");
+  };
+
+  const getMarsSettings = () => {
+    const marsCfg = proxySettings.marsproxies || proxySettings.marsProxies || {};
+
+    return {
+      domain:
+        process.env.MARSPROXIES_DOMAIN ||
+        process.env.MARSPROXIES_HOST ||
+        marsCfg.domain ||
+        marsCfg.host ||
+        "91.239.130.17",
+      port: String(process.env.MARSPROXIES_PORT || marsCfg.port || "44445"),
+      username:
+        process.env.MARSPROXIES_USERNAME || marsCfg.username || "mr88909jCof",
+      password: process.env.MARSPROXIES_PASSWORD || marsCfg.password || "",
+      passwordPrefix:
+        process.env.MARSPROXIES_PASSWORD_PREFIX ||
+        marsCfg.passwordPrefix ||
+        "Mkt28Uzxh5",
+      passwordTemplate:
+        process.env.MARSPROXIES_PASSWORD_TEMPLATE ||
+        marsCfg.passwordTemplate ||
+        "",
+      protocol:
+        process.env.MARSPROXIES_PROTOCOL || marsCfg.protocol || "socks5",
+      locationTag:
+        process.env.MARSPROXIES_LOCATION_TAG || marsCfg.locationTag || "state",
+      locationSource:
+        process.env.MARSPROXIES_LOCATION_SOURCE ||
+        marsCfg.locationSource ||
+        "city",
+      locationFormat:
+        process.env.MARSPROXIES_LOCATION_FORMAT ||
+        marsCfg.locationFormat ||
+        "compact",
+      fast: process.env.MARSPROXIES_FAST || marsCfg.fast || "1",
+      stable: process.env.MARSPROXIES_STABLE || marsCfg.stable || "1",
+      lifetime: process.env.MARSPROXIES_LIFETIME || marsCfg.lifetime || "168h",
+      ultraset: process.env.MARSPROXIES_ULTRASET || marsCfg.ultraset || "1",
+    };
+  };
+
+  const renderTemplate = (template, vars) =>
+    String(template || "").replace(/\{([a-zA-Z0-9_]+)\}/g, (_, key) =>
+      vars[key] !== undefined && vars[key] !== null ? String(vars[key]) : ""
+    );
+
   switch (provider) {
     case "marsproxies":
-      const locationKey =
-        state_or_city === "state"
-          ? location.state.toLowerCase().replace(/ /g, "")
-          : location.city.toLowerCase().replace(/ /g, "");
-      password = `Mkt28Uzxh5_country-${location.CountryCode}_${state_or_city}-${locationKey}_fast-1_stable-1_session-${random_sid}_lifetime-168h_ultraset-1`;
+      const mars = getMarsSettings();
+      const scope = mars.locationTag === "city" ? "city" : "state";
+      const country = String(
+        location.CountryCode || location.countryCode || "us"
+      ).toLowerCase();
+      const locationValue =
+        mars.locationSource === "state" ? location.state || "" : location.city || "";
+      const locationKey = normalizeToken(locationValue, mars.locationFormat);
+
+      password =
+        mars.password ||
+        (mars.passwordTemplate
+          ? renderTemplate(mars.passwordTemplate, {
+              country,
+              scope,
+              location: locationKey,
+              city: normalizeToken(location.city || "", mars.locationFormat),
+              state: normalizeToken(location.state || "", mars.locationFormat),
+              session: random_sid,
+              fast: mars.fast,
+              stable: mars.stable,
+              lifetime: mars.lifetime,
+              ultraset: mars.ultraset,
+            })
+          : `${mars.passwordPrefix}_country-${country}_${scope}-${locationKey}_fast-${mars.fast}_stable-${mars.stable}_session-${random_sid}_lifetime-${mars.lifetime}_ultraset-${mars.ultraset}`);
 
       return {
-        domain: "91.239.130.17",
-        port: "44445",
-        username: "mr88909jCof",
+        domain: mars.domain,
+        port: mars.port,
+        username: mars.username,
         password: password,
+        protocol: mars.protocol,
       };
     case "proxyempire":
       const city = location.city.toLowerCase().replace(/ /g, "+");

@@ -20,7 +20,12 @@ async function generateProxyWithFallback(location, appConfig = null) {
       let retries = 0;
       while (retries < MAX_RETRIES) {
         try {
-          const result = await generateProxyInfo(location, provider, "city");
+          const result = await generateProxyInfo(
+            location,
+            provider,
+            "city",
+            appConfig?.proxy || {}
+          );
 
           if (result) {
             return {
