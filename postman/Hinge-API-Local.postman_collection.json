@@ -134,7 +134,7 @@
       "name": "1. Accounts",
       "item": [
         {
-          "name": "Generate Account (sync)",
+          "name": "Generate Account (formatted)",
           "event": [
             {
               "listen": "test",
@@ -143,12 +143,11 @@
                 "exec": [
                   "let json = {};",
                   "try { json = pm.response.json(); } catch (e) {}",
-                  "const payload = json?.data || {};",
-                  "if (payload?.sessionId) pm.environment.set(\"sessionId\", payload.sessionId);",
-                  "if (payload?.phone?.requestId) pm.environment.set(\"smsRequestId\", payload.phone.requestId);",
-                  "if (payload?.email?.orderId) pm.environment.set(\"emailOrderId\", payload.email.orderId);",
+                  "if (json?.session_id) pm.environment.set(\"sessionId\", json.session_id);",
+                  "if (json?.sms_request_id) pm.environment.set(\"smsRequestId\", json.sms_request_id);",
+                  "if (json?.email_order_id) pm.environment.set(\"emailOrderId\", json.email_order_id);",
                   "pm.test(\"Status is 200\", function () { pm.response.to.have.status(200); });",
-                  "pm.test(\"Has sessionId\", function () { pm.expect(payload.sessionId).to.be.a(\"string\"); });"
+                  "pm.test(\"Has method\", function () { pm.expect(json.method).to.eql(\"fast_v1.01\"); });"
                 ]
               }
             }

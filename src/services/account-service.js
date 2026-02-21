@@ -23,6 +23,10 @@ function createAccountService({
       location: {
         city: locationWithCoords.city,
         state: locationWithCoords.state,
+        countryCode:
+          locationWithCoords.countryCode ||
+          locationWithCoords.CountryCode ||
+          "us",
         latitude: locationWithCoords.latitude,
         longitude: locationWithCoords.longitude,
         areaCode: locationWithCoords.areaCode,

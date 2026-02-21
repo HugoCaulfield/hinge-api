@@ -1,5 +1,6 @@
 const express = require("express");
 const { z } = require("zod");
+const { mapGenerateAccountResponse } = require("../utils/account-response-format");
 
 function createRouter({
   config,
@@ -105,7 +106,7 @@ function createRouter({
     try {
       const input = parse(generateSchema, req.body);
       const result = await accountService.generateAccount(input);
-      return res.json(withMeta(result));
+      return res.json(mapGenerateAccountResponse(result));
     } catch (error) {
       return next(error);
     }
