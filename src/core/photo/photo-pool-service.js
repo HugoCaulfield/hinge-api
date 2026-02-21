@@ -289,13 +289,25 @@ async function copyOriginalPhotosToTemp(photosNeeded, modelKey = DEFAULT_MODEL_K
       .filter((file) => file.match(/\.(jpg|jpeg|png|heic|heif|webp|bmp)$/i))
       .map((file) => path.join(sourceDir, file));
 
-    if (photoFiles.length === 0) {
+    const heifCandidates = photoFiles.filter((filePath) =>
+      filePath.match(/\.(heic|heif)$/i)
+    );
+    const sourceCandidates =
+      heifCandidates.length > 0 ? heifCandidates : photoFiles;
+
+    if (sourceCandidates.length === 0) {
       return { photoPaths: [], originalNames: [] };
     }
 
-    const selected = shuffleArray(photoFiles).slice(
+    if (heifCandidates.length === 0) {
+      log(
+        `⚠️ No HEIC/HEIF source photos found for model ${modelKey}; falling back to other image formats.`
+      );
+    }
+
+    const selected = shuffleArray(sourceCandidates).slice(
       0,
-      Math.min(photosNeeded, photoFiles.length)
+      Math.min(photosNeeded, sourceCandidates.length)
     );
 
     const tempRootDir = path.join(__dirname, "..", "temp");
@@ -349,6 +361,33 @@ function parseOriginalNamesFromOutput(output = "") {
   }
 
   return names;
+}
+
+async function normalizeHeifExtensions(photoPaths = []) {
+  const normalized = [];
+
+  for (const filePath of photoPaths) {
+    if (!/\.(heic|heif)$/i.test(filePath)) {
+      normalized.push(filePath);
+      continue;
+    }
+
+    const targetPath = filePath.replace(/\.(heic|heif)$/i, ".heif");
+    if (targetPath === filePath) {
+      normalized.push(filePath);
+      continue;
+    }
+
+    try {
+      await fs.rename(filePath, targetPath);
+      normalized.push(targetPath);
+    } catch (error) {
+      log(`⚠️ Could not rename ${filePath} to .heif: ${error.message}`);
+      normalized.push(filePath);
+    }
+  }
+
+  return normalized;
 }
 
 function getPythonExecutable() {
@@ -425,9 +464,19 @@ async function runMetadataOnlySpoofing(photosNeeded, modelKey, appName) {
   const imageFiles = files
     .filter((file) => file.match(/\.(jpg|jpeg|png|heic|heif)$/i))
     .map((file) => path.join(sessionDir, file));
+  const heifFiles = imageFiles.filter((filePath) =>
+    filePath.match(/\.(heic|heif)$/i)
+  );
+  const selectedImageFiles = heifFiles.length > 0 ? heifFiles : imageFiles;
+
+  if (heifFiles.length === 0) {
+    throw new Error(
+      "metadata-only spoofer returned no HEIC/HEIF output files"
+    );
+  }
 
   const withStats = await Promise.all(
-    imageFiles.map(async (filePath) => {
+    selectedImageFiles.map(async (filePath) => {
       const stat = await fs.stat(filePath);
       return { filePath, mtimeMs: stat.mtimeMs };
     })
@@ -475,14 +524,22 @@ async function buildPhotoSet(options = {}) {
         activeModelKey,
         appName
       );
+      const normalizedPhotoPaths = await normalizeHeifExtensions(
+        metadataOnlyResult.photoPaths || []
+      );
       return {
         ...metadataOnlyResult,
+        photoPaths: normalizedPhotoPaths,
         modelKey: activeModelKey,
       };
     } catch (error) {
       log(`⚠️ Metadata-only spoofing failed, falling back to originals: ${error.message}`);
+      const fallback = await copyOriginalPhotosToTemp(photosNeeded, activeModelKey);
+      fallback.photoPaths = await normalizeHeifExtensions(
+        fallback.photoPaths || []
+      );
       return {
-        ...(await copyOriginalPhotosToTemp(photosNeeded, activeModelKey)),
+        ...fallback,
         modelKey: activeModelKey,
       };
     }

@@ -4,8 +4,7 @@ const { z } = require("zod");
 function createRouter({
   config,
   authMiddleware,
-  jobsStore,
-  jobRunner,
+  accountService,
   sessionsStore,
   smsStore,
   emailStore,
@@ -102,65 +101,51 @@ function createRouter({
 
   router.use("/v1", authMiddleware);
 
-  router.post("/v1/accounts/generate", (req, res, next) => {
+  router.post("/v1/accounts/generate", async (req, res, next) => {
     try {
       const input = parse(generateSchema, req.body);
-      const job = jobRunner.submit("account.generate", input);
-      return res.status(202).json(withMeta({ jobId: job.jobId, status: job.status }));
+      const result = await accountService.generateAccount(input);
+      return res.json(withMeta(result));
     } catch (error) {
       return next(error);
     }
   });
 
-  router.get("/v1/jobs/:jobId", (req, res) => {
-    const job = jobsStore.get(req.params.jobId);
-    if (!job) {
-      return res.status(404).json({
-        error: {
-          code: "JOB_NOT_FOUND",
-          message: "Job not found",
-          details: {},
-        },
-      });
-    }
-    return res.json(withMeta(job));
-  });
-
-  router.post("/v1/proxies/regenerate", (req, res, next) => {
+  router.post("/v1/proxies/regenerate", async (req, res, next) => {
     try {
       const input = parse(regenProxySchema, req.body);
-      const job = jobRunner.submit("proxy.regenerate", input);
-      return res.status(202).json(withMeta({ jobId: job.jobId, status: job.status }));
+      const result = await accountService.regenerateProxy(input);
+      return res.json(withMeta(result));
     } catch (error) {
       return next(error);
     }
   });
 
-  router.post("/v1/phones/regenerate", (req, res, next) => {
+  router.post("/v1/phones/regenerate", async (req, res, next) => {
     try {
       const input = parse(regenPhoneSchema, req.body);
-      const job = jobRunner.submit("phone.regenerate", input);
-      return res.status(202).json(withMeta({ jobId: job.jobId, status: job.status }));
+      const result = await accountService.regeneratePhone(input);
+      return res.json(withMeta(result));
     } catch (error) {
       return next(error);
     }
   });
 
-  router.post("/v1/emails/regenerate", (req, res, next) => {
+  router.post("/v1/emails/regenerate", async (req, res, next) => {
     try {
       const input = parse(regenEmailSchema, req.body);
-      const job = jobRunner.submit("email.regenerate", input);
-      return res.status(202).json(withMeta({ jobId: job.jobId, status: job.status }));
+      const result = await accountService.regenerateEmail(input);
+      return res.json(withMeta(result));
     } catch (error) {
       return next(error);
     }
   });
 
-  router.post("/v1/photos/regenerate", (req, res, next) => {
+  router.post("/v1/photos/regenerate", async (req, res, next) => {
     try {
       const input = parse(regenPhotosSchema, req.body);
-      const job = jobRunner.submit("photos.regenerate", input);
-      return res.status(202).json(withMeta({ jobId: job.jobId, status: job.status }));
+      const result = await accountService.regeneratePhotos(input);
+      return res.json(withMeta(result));
     } catch (error) {
       return next(error);
     }

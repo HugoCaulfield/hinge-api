@@ -5,7 +5,7 @@
     "useScamalytics": true
   },
   "photos": {
-    "useSpoofing": true,
+    "useSpoofing": false,
     "spoofer": "random_three",
     "metadataSpoofer": "iphone_exif_gui_reconstructed",
     "count": 6
@@ -33,10 +33,6 @@
   },
   "webhooks": {
     "daisysmsToken": ""
-  },
-  "jobs": {
-    "concurrency": 1,
-    "ttlMs": 86400000
   },
   "sessions": {
     "ttlMs": 86400000

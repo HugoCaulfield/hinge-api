@@ -609,11 +609,18 @@ def apply_subtle_modifications(img_path, level):
         for modify in modifications[:num_modifications]:
             img = modify(img)
 
-        # Save with quality variation
+        # Save with quality variation while preserving iPhone-like HEIC extension when possible.
         quality_variation = random.randint(-2, 2)
         final_quality = max(85, min(98, 95 + quality_variation))
+        output_ext = Path(img_path).suffix.lower()
 
-        img.save(img_path, 'JPEG', quality=final_quality)
+        if output_ext in [".heic", ".heif"]:
+            try:
+                img.save(img_path, "HEIF", quality=final_quality)
+            except Exception:
+                img.save(img_path, "JPEG", quality=final_quality)
+        else:
+            img.save(img_path, "JPEG", quality=final_quality)
         return True
 
     except Exception as e:
@@ -646,7 +653,7 @@ def process_batch(
     print("=" * 55)
 
     # Find all images
-    image_extensions = ['.jpg', '.jpeg', '.png', '.heic', '.JPG', '.JPEG', '.PNG', '.HEIC']
+    image_extensions = ['.jpg', '.jpeg', '.png', '.heic', '.heif', '.JPG', '.JPEG', '.PNG', '.HEIC', '.HEIF']
 
     if os.path.isfile(input_path):
         image_files = [input_path]
@@ -722,8 +729,9 @@ def process_batch(
 
                 # Generate new filename
                 base_name = generate_random_filename()
-                new_filename = f"{base_name}.jpg"
                 original_ext = os.path.splitext(img_file)[1].lower()
+                output_ext = ".HEIC" if original_ext in [".heic", ".heif"] else ".jpg"
+                new_filename = f"{base_name}{output_ext}"
 
                 target = os.path.join(batch_folder, new_filename)
 

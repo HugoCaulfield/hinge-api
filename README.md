@@ -52,7 +52,7 @@ curl http://127.0.0.1:3000/health
 Auth check example:
 
 ```bash
-curl -H "x-api-key: change-me" http://127.0.0.1:3000/v1/jobs/test
+curl -H "x-api-key: change-me" http://127.0.0.1:3000/v1/photos/pools/stats
 ```
 
 ## 2) Launch the photo worker
@@ -115,3 +115,13 @@ npm run start:photo-worker
 
 - `photos.useSpoofing=true`: uses pool photos generated with full spoofing pipeline.
 - `photos.useSpoofing=false`: still spoofs metadata (iPhone/GPS/date) with `iphone_exif_gui_reconstructed` at `modification-level=0`, so pixels are not intentionally altered.
+- With `useSpoofing=false`, the API now prioritizes iPhone-like HEIC/HEIF outputs.
+
+## API response mode
+
+- `POST /v1/accounts/generate` is synchronous: it waits and returns the final payload directly.
+- Regenerate endpoints are also synchronous:
+  - `POST /v1/proxies/regenerate`
+  - `POST /v1/phones/regenerate`
+  - `POST /v1/emails/regenerate`
+  - `POST /v1/photos/regenerate`

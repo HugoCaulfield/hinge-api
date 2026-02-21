@@ -2,7 +2,7 @@
   "info": {
     "_postman_id": "7bb83a0e-7eb9-4f60-9df0-b57a36e8d315",
     "name": "Hinge API Local",
-    "description": "Collection ready-to-import for local testing of the Hinge API.",
+    "description": "Collection ready-to-import for local testing of the Hinge API (synchronous endpoints, no job polling).",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "auth": {
@@ -26,16 +26,46 @@
     ]
   },
   "variable": [
-    { "key": "baseUrl", "value": "http://127.0.0.1:3000" },
-    { "key": "apiKey", "value": "change-me" },
-    { "key": "webhookToken", "value": "" },
-    { "key": "state", "value": "New York" },
-    { "key": "city", "value": "New York" },
-    { "key": "areaCode", "value": "212" },
-    { "key": "jobId", "value": "" },
-    { "key": "sessionId", "value": "" },
-    { "key": "smsRequestId", "value": "" },
-    { "key": "emailOrderId", "value": "" }
+    {
+      "key": "baseUrl",
+      "value": "http://127.0.0.1:3000"
+    },
+    {
+      "key": "apiKey",
+      "value": "change-me"
+    },
+    {
+      "key": "webhookToken",
+      "value": ""
+    },
+    {
+      "key": "state",
+      "value": "New York"
+    },
+    {
+      "key": "city",
+      "value": "New York"
+    },
+    {
+      "key": "areaCode",
+      "value": "212"
+    },
+    {
+      "key": "sessionId",
+      "value": ""
+    },
+    {
+      "key": "smsRequestId",
+      "value": ""
+    },
+    {
+      "key": "emailOrderId",
+      "value": ""
+    },
+    {
+      "key": "modelKey",
+      "value": "chloe"
+    }
   ],
   "item": [
     {
@@ -44,13 +74,19 @@
         {
           "name": "Health",
           "request": {
-            "auth": { "type": "noauth" },
+            "auth": {
+              "type": "noauth"
+            },
             "method": "GET",
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/health",
-              "host": ["{{baseUrl}}"],
-              "path": ["health"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "health"
+              ]
             }
           },
           "response": []
@@ -58,11 +94,21 @@
         {
           "name": "Webhook DaisySMS (simulate code)",
           "request": {
-            "auth": { "type": "noauth" },
+            "auth": {
+              "type": "noauth"
+            },
             "method": "POST",
             "header": [
-              { "key": "Content-Type", "value": "application/json", "type": "text" },
-              { "key": "x-webhook-token", "value": "{{webhookToken}}", "type": "text" }
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "x-webhook-token",
+                "value": "{{webhookToken}}",
+                "type": "text"
+              }
             ],
             "body": {
               "mode": "raw",
@@ -70,8 +116,14 @@
             },
             "url": {
               "raw": "{{baseUrl}}/v1/webhooks/daisysms",
-              "host": ["{{baseUrl}}"],
-              "path": ["v1", "webhooks", "daisysms"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "webhooks",
+                "daisysms"
+              ]
             }
           },
           "response": []
@@ -79,10 +131,10 @@
       ]
     },
     {
-      "name": "1. Jobs",
+      "name": "1. Accounts",
       "item": [
         {
-          "name": "Generate Account",
+          "name": "Generate Account (sync)",
           "event": [
             {
               "listen": "test",
@@ -91,13 +143,12 @@
                 "exec": [
                   "let json = {};",
                   "try { json = pm.response.json(); } catch (e) {}",
-                  "if (json?.data?.jobId) {",
-                  "  pm.environment.set('jobId', json.data.jobId);",
-                  "  pm.environment.unset('sessionId');",
-                  "  pm.environment.unset('smsRequestId');",
-                  "  pm.environment.unset('emailOrderId');",
-                  "}",
-                  "pm.test('Status is 202', function () { pm.response.to.have.status(202); });"
+                  "const payload = json?.data || {};",
+                  "if (payload?.sessionId) pm.environment.set(\"sessionId\", payload.sessionId);",
+                  "if (payload?.phone?.requestId) pm.environment.set(\"smsRequestId\", payload.phone.requestId);",
+                  "if (payload?.email?.orderId) pm.environment.set(\"emailOrderId\", payload.email.orderId);",
+                  "pm.test(\"Status is 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"Has sessionId\", function () { pm.expect(payload.sessionId).to.be.a(\"string\"); });"
                 ]
               }
             }
@@ -105,46 +156,26 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "Content-Type", "value": "application/json", "type": "text" }
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"state\": \"{{state}}\",\n  \"city\": \"{{city}}\",\n  \"modelKey\": \"chloe\"\n}"
+              "raw": "{\n  \"state\": \"{{state}}\",\n  \"city\": \"{{city}}\",\n  \"modelKey\": \"{{modelKey}}\"\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/v1/accounts/generate",
-              "host": ["{{baseUrl}}"],
-              "path": ["v1", "accounts", "generate"]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Get Job by jobId",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "let json = {};",
-                  "try { json = pm.response.json(); } catch (e) {}",
-                  "const result = json?.data?.result;",
-                  "if (result?.sessionId) pm.environment.set('sessionId', result.sessionId);",
-                  "if (result?.phone?.requestId) pm.environment.set('smsRequestId', result.phone.requestId);",
-                  "if (result?.email?.orderId) pm.environment.set('emailOrderId', result.email.orderId);",
-                  "pm.test('Status is 200', function () { pm.response.to.have.status(200); });"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/v1/jobs/{{jobId}}",
-              "host": ["{{baseUrl}}"],
-              "path": ["v1", "jobs", "{{jobId}}"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "accounts",
+                "generate"
+              ]
             }
           },
           "response": []
@@ -164,8 +195,7 @@
                 "exec": [
                   "let json = {};",
                   "try { json = pm.response.json(); } catch (e) {}",
-                  "if (json?.data?.jobId) pm.environment.set('jobId', json.data.jobId);",
-                  "pm.test('Status is 202', function () { pm.response.to.have.status(202); });"
+                  "pm.test('Status is 200', function () { pm.response.to.have.status(200); });"
                 ]
               }
             }
@@ -173,7 +203,11 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "Content-Type", "value": "application/json", "type": "text" }
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
             ],
             "body": {
               "mode": "raw",
@@ -181,8 +215,14 @@
             },
             "url": {
               "raw": "{{baseUrl}}/v1/proxies/regenerate",
-              "host": ["{{baseUrl}}"],
-              "path": ["v1", "proxies", "regenerate"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "proxies",
+                "regenerate"
+              ]
             }
           },
           "response": []
@@ -197,8 +237,9 @@
                 "exec": [
                   "let json = {};",
                   "try { json = pm.response.json(); } catch (e) {}",
-                  "if (json?.data?.jobId) pm.environment.set('jobId', json.data.jobId);",
-                  "pm.test('Status is 202', function () { pm.response.to.have.status(202); });"
+                  "const payload = json?.data || {};",
+                  "if (payload?.requestId) pm.environment.set(\"smsRequestId\", payload.requestId);",
+                  "pm.test(\"Status is 200\", function () { pm.response.to.have.status(200); });"
                 ]
               }
             }
@@ -206,7 +247,11 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "Content-Type", "value": "application/json", "type": "text" }
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
             ],
             "body": {
               "mode": "raw",
@@ -214,8 +259,14 @@
             },
             "url": {
               "raw": "{{baseUrl}}/v1/phones/regenerate",
-              "host": ["{{baseUrl}}"],
-              "path": ["v1", "phones", "regenerate"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "phones",
+                "regenerate"
+              ]
             }
           },
           "response": []
@@ -230,8 +281,9 @@
                 "exec": [
                   "let json = {};",
                   "try { json = pm.response.json(); } catch (e) {}",
-                  "if (json?.data?.jobId) pm.environment.set('jobId', json.data.jobId);",
-                  "pm.test('Status is 202', function () { pm.response.to.have.status(202); });"
+                  "const payload = json?.data || {};",
+                  "if (payload?.orderId) pm.environment.set(\"emailOrderId\", payload.orderId);",
+                  "pm.test(\"Status is 200\", function () { pm.response.to.have.status(200); });"
                 ]
               }
             }
@@ -239,7 +291,11 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "Content-Type", "value": "application/json", "type": "text" }
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
             ],
             "body": {
               "mode": "raw",
@@ -247,8 +303,14 @@
             },
             "url": {
               "raw": "{{baseUrl}}/v1/emails/regenerate",
-              "host": ["{{baseUrl}}"],
-              "path": ["v1", "emails", "regenerate"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "emails",
+                "regenerate"
+              ]
             }
           },
           "response": []
@@ -263,8 +325,9 @@
                 "exec": [
                   "let json = {};",
                   "try { json = pm.response.json(); } catch (e) {}",
-                  "if (json?.data?.jobId) pm.environment.set('jobId', json.data.jobId);",
-                  "pm.test('Status is 202', function () { pm.response.to.have.status(202); });"
+                  "const payload = json?.data || {};",
+                  "pm.test(\"Status is 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"Has photos array\", function () { pm.expect(Array.isArray(payload.photoPaths)).to.eql(true); });"
                 ]
               }
             }
@@ -272,16 +335,26 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "Content-Type", "value": "application/json", "type": "text" }
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"sessionId\": \"{{sessionId}}\",\n  \"modelKey\": \"chloe\"\n}"
+              "raw": "{\n  \"sessionId\": \"{{sessionId}}\",\n  \"modelKey\": \"{{modelKey}}\"\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/v1/photos/regenerate",
-              "host": ["{{baseUrl}}"],
-              "path": ["v1", "photos", "regenerate"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "photos",
+                "regenerate"
+              ]
             }
           },
           "response": []
@@ -298,8 +371,15 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/v1/sms/{{smsRequestId}}/status",
-              "host": ["{{baseUrl}}"],
-              "path": ["v1", "sms", "{{smsRequestId}}", "status"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "sms",
+                "{{smsRequestId}}",
+                "status"
+              ]
             }
           },
           "response": []
@@ -311,8 +391,15 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/v1/sms/{{smsRequestId}}/code",
-              "host": ["{{baseUrl}}"],
-              "path": ["v1", "sms", "{{smsRequestId}}", "code"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "sms",
+                "{{smsRequestId}}",
+                "code"
+              ]
             }
           },
           "response": []
@@ -329,8 +416,15 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/v1/emails/{{emailOrderId}}/status",
-              "host": ["{{baseUrl}}"],
-              "path": ["v1", "emails", "{{emailOrderId}}", "status"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "emails",
+                "{{emailOrderId}}",
+                "status"
+              ]
             }
           },
           "response": []
@@ -342,8 +436,15 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/v1/emails/{{emailOrderId}}/code",
-              "host": ["{{baseUrl}}"],
-              "path": ["v1", "emails", "{{emailOrderId}}", "code"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "emails",
+                "{{emailOrderId}}",
+                "code"
+              ]
             }
           },
           "response": []
@@ -360,8 +461,15 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/v1/sessions/{{sessionId}}/cancel",
-              "host": ["{{baseUrl}}"],
-              "path": ["v1", "sessions", "{{sessionId}}", "cancel"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "sessions",
+                "{{sessionId}}",
+                "cancel"
+              ]
             }
           },
           "response": []
@@ -373,8 +481,15 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/v1/photos/pools/stats",
-              "host": ["{{baseUrl}}"],
-              "path": ["v1", "photos", "pools", "stats"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "photos",
+                "pools",
+                "stats"
+              ]
             }
           },
           "response": []
