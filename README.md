@@ -115,7 +115,7 @@ npm run start:photo-worker
 
 - `photos.useSpoofing=true`: uses pool photos generated with full spoofing pipeline.
 - `photos.useSpoofing=false`: still spoofs metadata (iPhone/GPS/date) with `iphone_exif_gui_reconstructed` at `modification-level=0`, so pixels are not intentionally altered.
-- With `useSpoofing=false`, the API now prioritizes iPhone-like HEIC/HEIF outputs.
+- With `useSpoofing=false`, the API now prioritizes iPhone-like HEIC outputs.
 
 ## API response mode
 

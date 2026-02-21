@@ -68,8 +68,8 @@ This endpoint returns the formatted object directly (no `data/meta` wrapper):
     }
   },
   "pictures": [
-    "/.../IMG_6281.heif",
-    "/.../IMG_4015.heif"
+    "/.../IMG_6281.heic",
+    "/.../IMG_4015.heic"
   ],
   "account_info": {
     "first_name": "Chloe",
@@ -200,3 +200,29 @@ When email OTP arrives:
 2. Store `sms_request_id` and `email_order_id`.
 3. Poll `/v1/sms/:requestId/code` until `data.code` is available.
 4. Poll `/v1/emails/:orderId/code` until `data.code` is available.
+
+---
+
+## 6) Status handling (pending vs terminal failure)
+
+Use this status policy in your bot:
+
+### Success
+
+- `code_received`: success, stop polling.
+
+### Pending (keep polling)
+
+- `pending`
+
+### Terminal failure (stop polling and fail the step)
+
+- `cancelled`
+- `expired`
+- `timeout`
+- `error`
+
+Notes:
+- For SMS, the API may return: `pending`, `code_received`, `cancelled`, `timeout`, `error`.
+- For email, the API may return: `pending`, `code_received`, `cancelled`, `expired`, `timeout`, `error`.
+- If you ever receive an unknown status, treat it as `pending` for a short grace period, then fail on client timeout.

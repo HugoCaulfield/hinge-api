@@ -363,7 +363,7 @@ function parseOriginalNamesFromOutput(output = "") {
   return names;
 }
 
-async function normalizeHeifExtensions(photoPaths = []) {
+async function normalizeHeicExtensions(photoPaths = []) {
   const normalized = [];
 
   for (const filePath of photoPaths) {
@@ -372,7 +372,7 @@ async function normalizeHeifExtensions(photoPaths = []) {
       continue;
     }
 
-    const targetPath = filePath.replace(/\.(heic|heif)$/i, ".heif");
+    const targetPath = filePath.replace(/\.(heic|heif)$/i, ".heic");
     if (targetPath === filePath) {
       normalized.push(filePath);
       continue;
@@ -382,7 +382,7 @@ async function normalizeHeifExtensions(photoPaths = []) {
       await fs.rename(filePath, targetPath);
       normalized.push(targetPath);
     } catch (error) {
-      log(`⚠️ Could not rename ${filePath} to .heif: ${error.message}`);
+      log(`⚠️ Could not rename ${filePath} to .heic: ${error.message}`);
       normalized.push(filePath);
     }
   }
@@ -524,7 +524,7 @@ async function buildPhotoSet(options = {}) {
         activeModelKey,
         appName
       );
-      const normalizedPhotoPaths = await normalizeHeifExtensions(
+      const normalizedPhotoPaths = await normalizeHeicExtensions(
         metadataOnlyResult.photoPaths || []
       );
       return {
@@ -535,7 +535,7 @@ async function buildPhotoSet(options = {}) {
     } catch (error) {
       log(`⚠️ Metadata-only spoofing failed, falling back to originals: ${error.message}`);
       const fallback = await copyOriginalPhotosToTemp(photosNeeded, activeModelKey);
-      fallback.photoPaths = await normalizeHeifExtensions(
+      fallback.photoPaths = await normalizeHeicExtensions(
         fallback.photoPaths || []
       );
       return {
