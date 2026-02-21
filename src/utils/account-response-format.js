@@ -116,12 +116,24 @@ function toNumber(value, fallback = 0) {
 }
 
 function formatBirthDate(input = "") {
-  // Convert MM/DD/YYYY -> DD-MM-YYYY
-  const [mm, dd, yyyy] = String(input).split("/");
-  if (!mm || !dd || !yyyy) {
-    return input;
+  const raw = String(input || "").trim();
+  if (!raw) {
+    return "";
   }
-  return `${String(dd).padStart(2, "0")}-${String(mm).padStart(2, "0")}-${yyyy}`;
+
+  // Already in US format MM/DD/YYYY
+  if (/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(raw)) {
+    const [mm, dd, yyyy] = raw.split("/");
+    return `${String(mm).padStart(2, "0")}/${String(dd).padStart(2, "0")}/${yyyy}`;
+  }
+
+  // Legacy format DD-MM-YYYY -> MM/DD/YYYY
+  if (/^\d{1,2}-\d{1,2}-\d{4}$/.test(raw)) {
+    const [dd, mm, yyyy] = raw.split("-");
+    return `${String(mm).padStart(2, "0")}/${String(dd).padStart(2, "0")}/${yyyy}`;
+  }
+
+  return raw;
 }
 
 function resolveCountry(countryCode = "") {
@@ -148,6 +160,24 @@ function buildProxyUrl(proxy = {}) {
   return `${domain}:${port}:${username}:${password}`;
 }
 
+function normalizePicturePathToHeic(filePath = "") {
+  return String(filePath || "").replace(/\.(heif)$/i, ".heic");
+}
+
+function normalizePhoneNumber(phoneNumber = "") {
+  const digits = String(phoneNumber || "").replace(/\D+/g, "");
+  if (!digits) {
+    return "";
+  }
+
+  // US/CA normalization: strip leading country code 1 when present.
+  if (digits.length > 10 && digits.startsWith("1")) {
+    return digits.slice(1);
+  }
+
+  return digits;
+}
+
 function mapGenerateAccountResponse(payload = {}) {
   const location = payload.location || {};
   const photos = payload.photos || {};
@@ -171,7 +201,9 @@ function mapGenerateAccountResponse(payload = {}) {
         longitude: toNumber(location.longitude),
       },
     },
-    pictures: Array.isArray(photos.photoPaths) ? photos.photoPaths : [],
+    pictures: Array.isArray(photos.photoPaths)
+      ? photos.photoPaths.map(normalizePicturePathToHeic)
+      : [],
     account_info: {
       first_name: firstName,
       last_name: "",
@@ -179,11 +211,7 @@ function mapGenerateAccountResponse(payload = {}) {
       ...STATIC_ACCOUNT_INFO,
     },
     proxy_url: buildProxyUrl(proxy),
-    phone_number: phone.phoneNumber
-      ? phone.phoneNumber.startsWith("+")
-        ? phone.phoneNumber
-        : `+${phone.phoneNumber}`
-      : "",
+    phone_number: normalizePhoneNumber(phone.phoneNumber || ""),
     email: email.email || "",
     session_id: payload.sessionId || "",
     sms_request_id: phone.requestId || "",

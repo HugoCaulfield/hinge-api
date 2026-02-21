@@ -13,8 +13,10 @@ const { createAccountService } = require("./services/account-service");
 const { createAuthMiddleware } = require("./middleware/auth");
 const { errorHandler } = require("./middleware/error-handler");
 const { createRouter } = require("./routes/create-router");
+const { clearTempFilesOnStartup } = require("./utils/temp-files");
 
-function boot() {
+async function boot() {
+  await clearTempFilesOnStartup();
   const config = loadConfig();
 
   process.env.SELECTED_APP = config.appName || "hinge-prod-1";
@@ -64,4 +66,7 @@ function boot() {
   });
 }
 
-boot();
+boot().catch((error) => {
+  console.error(`[hinge-api] failed to boot: ${error.message}`);
+  process.exit(1);
+});

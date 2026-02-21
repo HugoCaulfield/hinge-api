@@ -592,7 +592,7 @@ async function buildPhotoSet(options = {}) {
     }
 
     const result = await movePhotosToUserTemp(uniqueSelection);
-
+    result.photoPaths = await normalizeHeicExtensions(result.photoPaths || []);
     return { ...result, modelKey: activeModelKey };
   } catch (error) {
     log(`❌ Error getting photos from pool: ${error.message}`);

@@ -74,7 +74,7 @@ This endpoint returns the formatted object directly (no `data/meta` wrapper):
   "account_info": {
     "first_name": "Chloe",
     "last_name": "",
-    "birth_date": "30-05-2006",
+    "birth_date": "05/30/2006",
     "pronouns": ["she", "her"],
     "gender": "Woman",
     "sexuality": "Straight",
