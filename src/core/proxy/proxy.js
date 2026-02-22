@@ -1,8 +1,19 @@
 const https = require("https");
+const dns = require("dns").promises;
 const path = require("path");
 const { execFile } = require("child_process");
 const { SocksProxyAgent } = require("socks-proxy-agent");
 const { log } = require("../../utils/logger");
+
+const SPAMHAUS_AUTH_NS = [
+  "a.gns.spamhaus.org",
+  "b.gns.spamhaus.org",
+  "c.gns.spamhaus.org",
+];
+const SPAMHAUS_SEVERE_CODES = new Set([2, 3, 4, 9]);
+const SPAMHAUS_PBL_CODES = new Set([10, 11]);
+const MAX_SCAMALYTICS_SCORE = 9;
+let spamhausNsCache = null;
 
 /**
  * Logger avec timing
@@ -104,6 +115,75 @@ const getIpViaProxy = async (proxyConfig) => {
   return null;
 };
 
+async function getSpamhausAuthoritativeNsIps() {
+  if (Array.isArray(spamhausNsCache) && spamhausNsCache.length > 0) {
+    return spamhausNsCache;
+  }
+
+  const resolver = new dns.Resolver();
+  const nsIps = [];
+  for (const host of SPAMHAUS_AUTH_NS) {
+    try {
+      const ips = await resolver.resolve4(host);
+      for (const ip of ips) {
+        if (!nsIps.includes(ip)) {
+          nsIps.push(ip);
+        }
+      }
+    } catch (_) {
+      // ignore single NS failure, continue with others
+    }
+  }
+
+  if (nsIps.length === 0) {
+    throw new Error("Spamhaus NS resolution failed");
+  }
+
+  spamhausNsCache = nsIps;
+  return nsIps;
+}
+
+async function checkSpamhausReliability(ip) {
+  const octets = String(ip || "").split(".");
+  const isIpv4 =
+    octets.length === 4 &&
+    octets.every((item) => /^\d+$/.test(item) && Number(item) >= 0 && Number(item) <= 255);
+  if (!isIpv4) {
+    throw new Error(`Spamhaus check requires IPv4, got: ${ip}`);
+  }
+
+  const queryName = `${ip.split(".").reverse().join(".")}.zen.spamhaus.org`;
+  const resolver = new dns.Resolver();
+  resolver.setServers(await getSpamhausAuthoritativeNsIps());
+
+  let records = [];
+  try {
+    records = await resolver.resolve4(queryName);
+  } catch (error) {
+    if (error?.code === "ENOTFOUND" || error?.code === "ENODATA") {
+      records = [];
+    } else {
+      throw error;
+    }
+  }
+
+  const codes = Array.from(
+    new Set(
+      records
+        .filter((item) => /^127\.0\.0\.\d+$/.test(item))
+        .map((item) => Number(item.split(".").pop()))
+        .filter((value) => Number.isInteger(value))
+    )
+  ).sort((a, b) => a - b);
+
+  const listed = codes.length > 0;
+  const pblOnly = listed && codes.every((code) => SPAMHAUS_PBL_CODES.has(code));
+  const severe = codes.some((code) => SPAMHAUS_SEVERE_CODES.has(code));
+  const reliable = !listed || pblOnly;
+
+  return { listed, pblOnly, severe, reliable, codes, records };
+}
+
 /**
  * Vérifie le risque d'une adresse IP via la page publique Scamalytics (sans clé API)
  * @param {string} ip - Adresse IP à vérifier
@@ -140,6 +220,19 @@ async function checkScamalytics(ip) {
       }
     }
     return geo;
+  };
+  const extractConnectionTypeFromScamalyticsHtml = (html) => {
+    const patterns = [
+      /<(?:th|td)[^>]*>\s*Connection\s*Type\s*<\/(?:th|td)>\s*<(?:th|td)[^>]*>\s*([^<]+?)\s*<\/(?:th|td)>/i,
+      /\bConnection\s*Type:\s*([^<\n\r]+)/i,
+    ];
+    for (const regex of patterns) {
+      const match = html.match(regex);
+      if (match?.[1]) {
+        return match[1].trim().toLowerCase();
+      }
+    }
+    return null;
   };
   const runPythonFallback = () =>
     new Promise((resolve) => {
@@ -366,6 +459,7 @@ async function checkScamalytics(ip) {
           const risk =
             fraudScore >= 75 ? "high" : fraudScore >= 35 ? "medium" : "low";
           const geo = extractGeoFromScamalyticsHtml(data);
+          const connectionType = extractConnectionTypeFromScamalyticsHtml(data);
 
           logWithTime(
             `✅ Scamalytics score récupéré: ${ip} (score=${fraudScore}, risk=${risk})`,
@@ -377,6 +471,8 @@ async function checkScamalytics(ip) {
             risk,
             ispRisk: null,
             isLowRisk: risk === "low",
+            connectionType,
+            isDsl: connectionType === "dsl",
             city: geo.city,
             state: geo.state,
           });
@@ -532,11 +628,9 @@ function validateScamalyticsData(scamalyticsData) {
 /**
  * Vérifie la qualité d'un proxy de manière optimisée
  * @param {Object} proxyConfig - Configuration du proxy
- * @param {string} city - Ville attendue
- * @param {string} state - État attendu
  * @returns {Promise<boolean>} - True si le proxy est valide, False sinon
  */
-async function verifyProxy(proxyConfig, city, state) {
+async function verifyProxy(proxyConfig) {
   const overallStartTime = Date.now();
   log(`🔍 Début vérification proxy: ${proxyConfig.domain}:${proxyConfig.port}`);
 
@@ -578,63 +672,71 @@ async function verifyProxy(proxyConfig, city, state) {
     }
     logWithTime("✅ Données Scamalytics récupérées", scamalyticsStartTime);
 
-    if (!scamalyticsResult.isLowRisk) {
+    const score = Number(scamalyticsResult.score);
+    if (!Number.isFinite(score)) {
       logWithTime(
-        `❌ Proxy rejeté: Risque Scamalytics ${scamalyticsResult.risk} (Score: ${scamalyticsResult.score})`,
+        `❌ Proxy rejeté: Score Scamalytics invalide (${scamalyticsResult.score})`,
         overallStartTime
       );
       return false;
     }
 
-    // 3. Vérifier la géolocalisation issue de Scamalytics
-    const geoStartTime = Date.now();
-    const normalize = (value) =>
-      String(value || "")
-        .toLowerCase()
-        .replace(/\./g, "")
-        .replace(/\bst\b/g, "saint")
-        .replace(/\s+/g, " ")
-        .trim();
-
-    const expectedCity = normalize(city);
-    const expectedState = normalize(state);
-    const actualCity = normalize(scamalyticsResult.city);
-    const actualState = normalize(scamalyticsResult.state);
-
-    if (!actualCity || !actualState) {
+    if (score > MAX_SCAMALYTICS_SCORE) {
       logWithTime(
-        `❌ Proxy rejeté: Géolocalisation absente dans Scamalytics (city=${scamalyticsResult.city || "?"}, state=${scamalyticsResult.state || "?"})`,
+        `❌ Proxy rejeté: Scamalytics score trop élevé (${score} > ${MAX_SCAMALYTICS_SCORE})`,
         overallStartTime
       );
       return false;
     }
 
-    const cityMatches =
-      !!actualCity &&
-      (actualCity.includes(expectedCity) || expectedCity.includes(actualCity));
-    const stateMatches =
-      !!actualState &&
-      (actualState === expectedState ||
-        actualState.includes(expectedState) ||
-        expectedState.includes(actualState));
+    const connectionType = (
+      scamalyticsResult.connectionType ||
+      scamalyticsResult.connection_type ||
+      ""
+    )
+      .toString()
+      .trim()
+      .toLowerCase();
+    const isDsl =
+      typeof scamalyticsResult.isDsl === "boolean"
+        ? scamalyticsResult.isDsl
+        : connectionType === "dsl";
 
-    if (!cityMatches || !stateMatches) {
+    //if (isDsl !== true) {
+    //  logWithTime(
+    //    `❌ Proxy rejeté: Connection Type non DSL (${connectionType || "unknown"})`,
+    //    overallStartTime
+    //  );
+    //  return false;
+    //}
+
+    const spamhausStartTime = Date.now();
+    const spamhaus = await checkSpamhausReliability(ip);
+    if (!spamhaus.reliable) {
       logWithTime(
-        `❌ Proxy rejeté: Géolocalisation Scamalytics différente (attendu: ${city}, ${state} | trouvé: ${scamalyticsResult.city || "?"}, ${scamalyticsResult.state || "?"})`,
+        `❌ Proxy rejeté: Spamhaus non fiable (codes: ${spamhaus.codes.join(", ") || "none"})`,
         overallStartTime
       );
       return false;
     }
-    logWithTime("✅ Géolocalisation Scamalytics validée", geoStartTime);
+    logWithTime(
+      `✅ Spamhaus fiable (listed=${spamhaus.listed}, pblOnly=${spamhaus.pblOnly}, codes=${spamhaus.codes.join(", ") || "none"})`,
+      spamhausStartTime
+    );
 
     logWithTime("🎉 Proxy validé avec succès", overallStartTime);
 
     return {
       success: true,
       ip,
-      scamalyticsScore: scamalyticsResult?.score ?? null,
+      scamalyticsScore: score,
       scamalyticsRisk: scamalyticsResult?.risk ?? null,
       scamalyticsIspScore: scamalyticsResult?.ispRisk ?? null,
+      scamalyticsConnectionType: connectionType || null,
+      scamalyticsIsDsl: isDsl,
+      spamhausReliable: spamhaus.reliable,
+      spamhausListed: spamhaus.listed,
+      spamhausCodes: spamhaus.codes,
       //ipLocationAccuracyKm: geoData?.ip_location_accuracy_km || null,
       //ipGeolocation: geoData?.ip_geolocation || null,
       //dbipIpCity: dbipData?.ip_city || null,
@@ -684,11 +786,7 @@ async function generateProxyInfo(
 
     const testStartTime = Date.now();
     log("🧪 Test de la configuration proxy...");
-    const verifyResult = await verifyProxy(
-      proxyConfig,
-      location.city,
-      location.state
-    );
+    const verifyResult = await verifyProxy(proxyConfig);
 
     if (!verifyResult || !verifyResult.success) {
       logWithTime("❌ Proxy invalide", startTime);
@@ -708,6 +806,12 @@ async function generateProxyInfo(
     proxyConfig.scamalyticsScore = verifyResult.scamalyticsScore;
     proxyConfig.scamalyticsRisk = verifyResult.scamalyticsRisk;
     proxyConfig.scamalyticsIspScore = verifyResult.scamalyticsIspScore;
+    proxyConfig.scamalyticsConnectionType =
+      verifyResult.scamalyticsConnectionType;
+    proxyConfig.scamalyticsIsDsl = verifyResult.scamalyticsIsDsl;
+    proxyConfig.spamhausReliable = verifyResult.spamhausReliable;
+    proxyConfig.spamhausListed = verifyResult.spamhausListed;
+    proxyConfig.spamhausCodes = verifyResult.spamhausCodes;
     proxyConfig.ipLocationAccuracyKm = verifyResult.ipLocationAccuracyKm;
     proxyConfig.ipGeolocation = verifyResult.ipGeolocation;
     proxyConfig.dbipIpCity = verifyResult.dbipIpCity;

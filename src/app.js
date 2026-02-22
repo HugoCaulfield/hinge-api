@@ -15,12 +15,32 @@ const { errorHandler } = require("./middleware/error-handler");
 const { createRouter } = require("./routes/create-router");
 const { clearTempFilesOnStartup } = require("./utils/temp-files");
 
+function parseRuntimeFlags(argv = process.argv.slice(2)) {
+  const args = new Set(argv || []);
+  const rentPhone =
+    !args.has("--no-phone") && !args.has("--no-rent-phone");
+  const rentEmail =
+    !args.has("--no-email") && !args.has("--no-rent-email");
+
+  return {
+    rentPhone,
+    rentEmail,
+  };
+}
+
 async function boot() {
   await clearTempFilesOnStartup();
   const config = loadConfig();
+  const runtimeFlags = parseRuntimeFlags();
 
   process.env.SELECTED_APP = config.appName || "hinge-prod-1";
   process.env.PHOTOS_USE_SPOOFING = config.photos.useSpoofing ? "true" : "false";
+
+  if (!runtimeFlags.rentPhone || !runtimeFlags.rentEmail) {
+    console.log(
+      `[hinge-api] runtime flags: rentPhone=${runtimeFlags.rentPhone}, rentEmail=${runtimeFlags.rentEmail}`
+    );
+  }
 
   const sessionsStore = createSessionsStore(config.sessions.ttlMs);
   const smsStore = createSmsStore();
@@ -39,6 +59,7 @@ async function boot() {
     smsService,
     emailService,
     photoService,
+    runtimeFlags,
   });
 
   const authMiddleware = createAuthMiddleware(config);

@@ -4,7 +4,13 @@ import re
 import sys
 from html import unescape
 
-from curl_cffi import requests as curl_requests
+try:
+    from curl_cffi import requests as curl_requests
+except Exception as exc:  # pragma: no cover - runtime dependency issue
+    curl_requests = None
+    IMPORT_ERROR = str(exc)
+else:
+    IMPORT_ERROR = None
 
 
 def extract_geo(html: str):
@@ -29,6 +35,18 @@ def extract_geo(html: str):
     return values["city"], values["state"]
 
 
+def extract_connection_type(html: str):
+    patterns = [
+        r"<(?:th|td)[^>]*>\s*Connection\s*Type\s*</(?:th|td)>\s*<(?:th|td)[^>]*>\s*([^<]+?)\s*</(?:th|td)>",
+        r"\bConnection\s*Type:\s*([^<\n\r]+)",
+    ]
+    for pattern in patterns:
+        match = re.search(pattern, html, re.IGNORECASE)
+        if match:
+            return unescape(match.group(1)).strip().lower()
+    return None
+
+
 def main() -> int:
     if len(sys.argv) < 2:
         print(json.dumps({"ok": False, "reason": "missing_ip"}))
@@ -38,6 +56,18 @@ def main() -> int:
     if not ip:
         print(json.dumps({"ok": False, "reason": "empty_ip"}))
         return 2
+
+    if curl_requests is None:
+        print(
+            json.dumps(
+                {
+                    "ok": False,
+                    "reason": "curl_cffi_unavailable",
+                    "errorMessage": IMPORT_ERROR,
+                }
+            )
+        )
+        return 1
 
     try:
         response = curl_requests.get(
@@ -78,6 +108,7 @@ def main() -> int:
     score = int(score_match.group(1))
     risk = "high" if score >= 75 else "medium" if score >= 35 else "low"
     city, state = extract_geo(html)
+    connection_type = extract_connection_type(html)
 
     print(
         json.dumps(
@@ -87,6 +118,8 @@ def main() -> int:
                 "risk": risk,
                 "ispRisk": None,
                 "isLowRisk": risk == "low",
+                "connectionType": connection_type,
+                "isDsl": connection_type == "dsl" if connection_type else None,
                 "city": city,
                 "state": state,
             }

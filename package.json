@@ -7,6 +7,9 @@
   "scripts": {
     "start": "node src/app.js",
     "dev": "node src/app.js",
+    "start:no-phone": "node src/app.js --no-phone",
+    "start:no-email": "node src/app.js --no-email",
+    "start:no-contacts": "node src/app.js --no-phone --no-email",
     "start:photo-worker": "node start-photo-worker.js"
   },
   "engines": {
